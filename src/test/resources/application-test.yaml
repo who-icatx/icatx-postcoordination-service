@@ -1,6 +1,6 @@
 spring:
   application:
-    name: webprotege-postcoordination-service
+    name: icatx-postcoordination-service
   rabbitmq:
     host: rabbitmq
     port: 5672

@@ -1,6 +1,6 @@
 spring:
   application:
-    name: webprotege-postcoordination-service
+    name: icatx-postcoordination-service
   rabbitmq:
     host: rabbitmq
     port: 5672
@@ -22,10 +22,10 @@ webprotege:
     bucket-name: webprotege-uploads
     revision-history-documents-bucket-name: webprotege-revision-history-documents
   rabbitmq:
-    requestqueue: webprotege-postcoordination-service-queue
-    responsequeue: webprotege-postcoordination-service-response-queue
+    requestqueue: icatx-postcoordination-service-queue
+    responsequeue: icatx-postcoordination-service-response-queue
     timeout: 60000
-    eventsqueue: webprotege-postcoordination-events-queue
+    eventsqueue: icatx-postcoordination-events-queue
     event-subscribe: true
   readWriteLock:
     timeoutInMillies: 1000
