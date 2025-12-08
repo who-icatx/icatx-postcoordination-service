@@ -10,7 +10,7 @@
     </parent>
     <groupId>edu.stanford.protege</groupId>
     <artifactId>icatx-postcoordination-service</artifactId>
-    <version>1.0.42</version>
+    <version>1.0.43</version>
     <name>icatx-postcoordination-service</name>
     <description>This microservice handles saving the post coordination configuration , querying the configuration for a
         given entity and the configuration
