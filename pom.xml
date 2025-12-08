@@ -9,9 +9,9 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>edu.stanford.protege</groupId>
-    <artifactId>webprotege-postcoordination-service</artifactId>
+    <artifactId>icatx-postcoordination-service</artifactId>
     <version>1.0.42</version>
-    <name>webprotege-postcoordination-service</name>
+    <name>icatx-postcoordination-service</name>
     <description>This microservice handles saving the post coordination configuration , querying the configuration for a
         given entity and the configuration
         of the post coordination table.
