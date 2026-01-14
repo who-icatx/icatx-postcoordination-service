@@ -18,14 +18,22 @@ public class TableAxisLabel {
     @Field("scaleLabel")
     private final String scaleLabel;
 
+    @Field("postCoordinationAxisSortingCode")
+    private final String postCoordinationAxisSortingCode;
+
+
     public final static String AXIS_LABELS_COLLECTION = "PostCoordinationTableAxisLabels";
 
 
     @JsonCreator
-    public TableAxisLabel(@JsonProperty("postcoordinationAxis") String postCoordinationAxis, @JsonProperty("tableLabel") String tableLabel, @JsonProperty("scaleLabel") String scaleLabel) {
+    public TableAxisLabel(@JsonProperty("postcoordinationAxis") String postCoordinationAxis,
+                          @JsonProperty("tableLabel") String tableLabel,
+                          @JsonProperty("scaleLabel") String scaleLabel,
+                          @JsonProperty("postCoordinationAxisSortingCode") String postCoordinationAxisSortingCode) {
         this.postCoordinationAxis = postCoordinationAxis;
         this.tableLabel = tableLabel;
         this.scaleLabel = scaleLabel;
+        this.postCoordinationAxisSortingCode = postCoordinationAxisSortingCode;
     }
 
     @JsonProperty("postcoordinationAxis")
@@ -41,5 +49,10 @@ public class TableAxisLabel {
     @JsonProperty("scaleLabel")
     public String getScaleLabel() {
         return scaleLabel;
+    }
+
+    @JsonProperty("postCoordinationAxisSortingCode")
+    public String getPostCoordinationAxisSortingCode() {
+        return postCoordinationAxisSortingCode;
     }
 }

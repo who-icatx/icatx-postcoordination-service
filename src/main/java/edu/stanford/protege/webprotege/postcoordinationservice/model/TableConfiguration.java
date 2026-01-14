@@ -15,7 +15,6 @@ public class TableConfiguration {
     @Field("postcoordinationAxes")
     private final List<String> postCoordinationAxes;
 
-
     @Field("compositePostcoordinationAxes")
     private final List<CompositeAxis> compositePostCoordinationAxes;
 
