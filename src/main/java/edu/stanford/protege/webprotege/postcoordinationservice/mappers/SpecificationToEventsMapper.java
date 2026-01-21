@@ -81,31 +81,72 @@ public class SpecificationToEventsMapper {
     public static Set<PostCoordinationCustomScalesValueEvent> createScaleEventsFromDiff(WhoficCustomScalesValues oldScales, WhoficCustomScalesValues newScales) {
         Set<PostCoordinationCustomScalesValueEvent> events = new HashSet<>();
 
-        for (PostCoordinationScaleCustomization scalesCustomization : newScales.scaleCustomizations()) {
-
-            PostCoordinationScaleCustomization oldScaleCustomization = oldScales.scaleCustomizations().stream().filter(scale -> scale.getPostcoordinationAxis().equalsIgnoreCase(scalesCustomization.getPostcoordinationAxis()))
-                    .findFirst().orElse(new PostCoordinationScaleCustomization(new ArrayList<>(), scalesCustomization.getPostcoordinationAxis()));
-
-            List<String> addScales = new ArrayList<>(scalesCustomization.getPostcoordinationScaleValues());
-            addScales.removeAll(oldScaleCustomization.getPostcoordinationScaleValues());
-
-            events.addAll(addScales.stream().map(scale -> new AddCustomScaleValueEvent(scalesCustomization.getPostcoordinationAxis(), scale)).toList());
-
-
-            List<String> removeScales = new ArrayList<>(oldScaleCustomization.getPostcoordinationScaleValues());
-            removeScales.removeAll(scalesCustomization.getPostcoordinationScaleValues());
-            events.addAll(removeScales.stream().map(scale -> new RemoveCustomScaleValueEvent(scalesCustomization.getPostcoordinationAxis(), scale)).toList());
-
+        // Handle null cases
+        if (oldScales == null || oldScales.scaleCustomizations() == null) {
+            oldScales = new WhoficCustomScalesValues(null, new ArrayList<>());
+        }
+        if (newScales == null || newScales.scaleCustomizations() == null) {
+            newScales = new WhoficCustomScalesValues(null, new ArrayList<>());
         }
 
-        for (PostCoordinationScaleCustomization scalesCustomization : oldScales.scaleCustomizations()) {
-            Optional<PostCoordinationScaleCustomization> newScaleCustomization = newScales.scaleCustomizations().stream().filter(scale -> scale.getPostcoordinationAxis().equalsIgnoreCase(scalesCustomization.getPostcoordinationAxis()))
-                    .findFirst();
-            if (newScaleCustomization.isEmpty()) {
-                events.addAll(scalesCustomization.getPostcoordinationScaleValues().stream().map(scale -> new RemoveCustomScaleValueEvent(scalesCustomization.getPostcoordinationAxis(), scale)).toList());
+        // Create maps for efficient lookup: normalized axis (lowercase) -> set of scale values
+        // Also track original axis names for case-insensitive matching
+        Map<String, Set<String>> oldScalesMap = new HashMap<>();
+        Map<String, Set<String>> newScalesMap = new HashMap<>();
+        Map<String, String> normalizedToOriginalAxis = new HashMap<>();
+
+        // Populate old scales map (using case-insensitive key matching)
+        for (PostCoordinationScaleCustomization customization : oldScales.scaleCustomizations()) {
+            if (customization != null && customization.getPostcoordinationAxis() != null) {
+                String axis = customization.getPostcoordinationAxis();
+                String normalizedAxis = axis.toLowerCase();
+                Set<String> values = new HashSet<>(customization.getPostcoordinationScaleValues() != null 
+                    ? customization.getPostcoordinationScaleValues() 
+                    : new ArrayList<>());
+                oldScalesMap.put(normalizedAxis, values);
+                normalizedToOriginalAxis.put(normalizedAxis, axis);
             }
         }
 
+        // Populate new scales map (using case-insensitive key matching)
+        for (PostCoordinationScaleCustomization customization : newScales.scaleCustomizations()) {
+            if (customization != null && customization.getPostcoordinationAxis() != null) {
+                String axis = customization.getPostcoordinationAxis();
+                String normalizedAxis = axis.toLowerCase();
+                Set<String> values = new HashSet<>(customization.getPostcoordinationScaleValues() != null 
+                    ? customization.getPostcoordinationScaleValues() 
+                    : new ArrayList<>());
+                newScalesMap.put(normalizedAxis, values);
+                // Prefer axis name from newScales if both exist
+                normalizedToOriginalAxis.put(normalizedAxis, axis);
+            }
+        }
+
+        // Collect all unique axes (union of old and new axes)
+        Set<String> allNormalizedAxes = new HashSet<>();
+        allNormalizedAxes.addAll(oldScalesMap.keySet());
+        allNormalizedAxes.addAll(newScalesMap.keySet());
+
+        // Process each axis to generate events
+        for (String normalizedAxis : allNormalizedAxes) {
+            String axis = normalizedToOriginalAxis.get(normalizedAxis);
+            Set<String> oldValues = oldScalesMap.getOrDefault(normalizedAxis, new HashSet<>());
+            Set<String> newValues = newScalesMap.getOrDefault(normalizedAxis, new HashSet<>());
+
+            // Values in newScales but not in oldScales → AddCustomScaleValueEvent
+            Set<String> valuesToAdd = new HashSet<>(newValues);
+            valuesToAdd.removeAll(oldValues);
+            for (String scaleValue : valuesToAdd) {
+                events.add(new AddCustomScaleValueEvent(axis, scaleValue));
+            }
+
+            // Values in oldScales but not in newScales → RemoveCustomScaleValueEvent
+            Set<String> valuesToRemove = new HashSet<>(oldValues);
+            valuesToRemove.removeAll(newValues);
+            for (String scaleValue : valuesToRemove) {
+                events.add(new RemoveCustomScaleValueEvent(axis, scaleValue));
+            }
+        }
 
         return events;
     }
