@@ -26,7 +26,7 @@ public class LinearizationService {
     @Cacheable("linearizationDefinitions")
     public List<LinearizationDefinition> getLinearizationDefinitions() {
         try {
-            return commandExecutor.execute(new LinearizationDefinitionRequest(), new ExecutionContext()).get(5, TimeUnit.SECONDS).definitionList();
+            return commandExecutor.execute(new LinearizationDefinitionRequest(), new ExecutionContext()).get(15, TimeUnit.SECONDS).definitionList();
         } catch (Exception e) {
             throw new RuntimeException("Exception fetching the definitions ", e);
         }

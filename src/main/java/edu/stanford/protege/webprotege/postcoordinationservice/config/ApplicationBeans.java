@@ -14,6 +14,8 @@ import edu.stanford.protege.webprotege.postcoordinationservice.dto.GetIcatxEntit
 import edu.stanford.protege.webprotege.postcoordinationservice.dto.GetIcatxEntityTypeResponse;
 import edu.stanford.protege.webprotege.postcoordinationservice.dto.LinearizationDefinitionRequest;
 import edu.stanford.protege.webprotege.postcoordinationservice.dto.LinearizationDefinitionResponse;
+import edu.stanford.protege.webprotege.postcoordinationservice.dto.ValidateAxisBelongsToHierarchyAction;
+import edu.stanford.protege.webprotege.postcoordinationservice.dto.ValidateAxisBelongsToHierarchyResult;
 import org.semanticweb.owlapi.model.IRI;
 import org.springframework.context.annotation.*;
 import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
@@ -72,6 +74,11 @@ public class ApplicationBeans {
     @Bean
     CommandExecutor<CheckNonExistentIrisAction, CheckNonExistentIrisResult> executorForCheckNonExistentIris() {
         return new CommandExecutorImpl<>(CheckNonExistentIrisResult.class);
+    }
+
+    @Bean
+    CommandExecutor<ValidateAxisBelongsToHierarchyAction, ValidateAxisBelongsToHierarchyResult> executorForValidateAxisBelongsToHierarchy() {
+        return new CommandExecutorImpl<>(ValidateAxisBelongsToHierarchyResult.class);
     }
 
 }

@@ -7,8 +7,12 @@ import edu.stanford.protege.webprotege.postcoordinationservice.dto.GetIcatxEntit
 import edu.stanford.protege.webprotege.postcoordinationservice.dto.GetIcatxEntityTypeResponse;
 import edu.stanford.protege.webprotege.postcoordinationservice.dto.PostCoordinationSpecification;
 import edu.stanford.protege.webprotege.postcoordinationservice.dto.PostCoordinationScaleCustomization;
+import edu.stanford.protege.webprotege.postcoordinationservice.dto.ValidateAxisBelongsToHierarchyAction;
+import edu.stanford.protege.webprotege.postcoordinationservice.dto.ValidateAxisBelongsToHierarchyResult;
+import edu.stanford.protege.webprotege.postcoordinationservice.model.PostcoordinationAxisToGenericScale;
 import edu.stanford.protege.webprotege.postcoordinationservice.model.TableConfiguration;
 import edu.stanford.protege.webprotege.postcoordinationservice.repositories.PostCoordinationTableConfigRepository;
+import edu.stanford.protege.webprotege.postcoordinationservice.repositories.PostcoordinationAxisToGenericScaleRepository;
 import org.jetbrains.annotations.NotNull;
 import org.semanticweb.owlapi.model.IRI;
 import org.slf4j.Logger;
@@ -29,13 +33,19 @@ public class ValidateEntityUpdateCommandHandler implements CommandHandler<Valida
     private final CommandExecutor<GetIcatxEntityTypeRequest, GetIcatxEntityTypeResponse> entityTypeExecutor;
     private final PostCoordinationTableConfigRepository configRepository;
     private final CommandExecutor<CheckNonExistentIrisAction, CheckNonExistentIrisResult> checkNonExistentIrisExecutor;
+    private final CommandExecutor<ValidateAxisBelongsToHierarchyAction, ValidateAxisBelongsToHierarchyResult> validateAxisBelongsToHierarchyExecutor;
+    private final PostcoordinationAxisToGenericScaleRepository axisToGenericScaleRepository;
 
     public ValidateEntityUpdateCommandHandler(CommandExecutor<GetIcatxEntityTypeRequest, GetIcatxEntityTypeResponse> entityTypeExecutor,
                                              PostCoordinationTableConfigRepository configRepository,
-                                             CommandExecutor<CheckNonExistentIrisAction, CheckNonExistentIrisResult> checkNonExistentIrisExecutor) {
+                                             CommandExecutor<CheckNonExistentIrisAction, CheckNonExistentIrisResult> checkNonExistentIrisExecutor,
+                                             CommandExecutor<ValidateAxisBelongsToHierarchyAction, ValidateAxisBelongsToHierarchyResult> validateAxisBelongsToHierarchyExecutor,
+                                             PostcoordinationAxisToGenericScaleRepository axisToGenericScaleRepository) {
         this.entityTypeExecutor = entityTypeExecutor;
         this.configRepository = configRepository;
         this.checkNonExistentIrisExecutor = checkNonExistentIrisExecutor;
+        this.validateAxisBelongsToHierarchyExecutor = validateAxisBelongsToHierarchyExecutor;
+        this.axisToGenericScaleRepository = axisToGenericScaleRepository;
     }
 
     @NotNull
@@ -55,6 +65,7 @@ public class ValidateEntityUpdateCommandHandler implements CommandHandler<Valida
         errorMessages.addAll(validatePostcoordinationAxisByEntityType(request, executionContext));
         errorMessages.addAll(validateScaleValuesExist(request, executionContext));
         errorMessages.addAll(validateCustomScalesAgainstSpecifications(request));
+        errorMessages.addAll(validateScaleValuesBelongToAxisHierarchy(request, executionContext));
         return Mono.just(new ValidateEntityUpdateResponse(errorMessages));
     }
 
@@ -77,7 +88,7 @@ public class ValidateEntityUpdateCommandHandler implements CommandHandler<Valida
             List<String> entityTypes = entityTypeExecutor.execute(
                     new GetIcatxEntityTypeRequest(IRI.create(entityIri), request.projectId()), 
                     executionContext)
-                    .get(5, TimeUnit.SECONDS).icatxEntityTypes();
+                    .get(15, TimeUnit.SECONDS).icatxEntityTypes();
 
             LOGGER.info("Fetched entity types for {} : {}", entityIri, entityTypes);
 
@@ -150,7 +161,7 @@ public class ValidateEntityUpdateCommandHandler implements CommandHandler<Valida
             CheckNonExistentIrisResult result = checkNonExistentIrisExecutor.execute(
                     new CheckNonExistentIrisAction(request.projectId(), scaleValueIris),
                     executionContext
-            ).get(5, TimeUnit.SECONDS);
+            ).get(15, TimeUnit.SECONDS);
 
             if (!result.nonExistentIris().isEmpty()) {
                 for (IRI nonExistentIri : result.nonExistentIris()) {
@@ -189,6 +200,85 @@ public class ValidateEntityUpdateCommandHandler implements CommandHandler<Valida
             if (axis != null && !allowedOrRequiredAxes.contains(axis)) {
                 errorMessages.add("Axis '" + axis + "' from entityCustomScaleValues is not present in allowedAxes or requiredAxes of any PostCoordinationSpecification");
             }
+        }
+
+        return errorMessages;
+    }
+
+    private List<String> validateScaleValuesBelongToAxisHierarchy(ValidateEntityUpdateRequest request, ExecutionContext executionContext) {
+        List<String> errorMessages = new ArrayList<>();
+
+        try {
+            // Obținem maparea axă -> top class din configurație
+            List<PostcoordinationAxisToGenericScale> axisToGenericScales = axisToGenericScaleRepository.getPostCoordAxisToGenericScale();
+            Map<String, String> axisToTopClassMap = axisToGenericScales.stream()
+                    .collect(Collectors.toMap(
+                            PostcoordinationAxisToGenericScale::getPostcoordinationAxis,
+                            PostcoordinationAxisToGenericScale::getGenericPostcoordinationScaleTopClass
+                    ));
+
+            // Construim map-ul hierarchyRootsToEntities
+            // Key = top class IRI pentru axă, Value = lista de scale values pentru acea axă
+            Map<IRI, List<IRI>> hierarchyRootsToEntities = new HashMap<>();
+
+            for (PostCoordinationScaleCustomization customization : request.entityCustomScaleValues().scaleCustomizations()) {
+                String axis = customization.getPostcoordinationAxis();
+                if (axis == null) {
+                    continue;
+                }
+
+                String topClassIri = axisToTopClassMap.get(axis);
+                if (topClassIri == null) {
+                    LOGGER.warn("No top class found for axis: {}", axis);
+                    continue;
+                }
+
+                IRI topClassIRI = IRI.create(topClassIri);
+                
+                // Convertim scale values din String în IRI
+                List<IRI> scaleValueIris = customization.getPostcoordinationScaleValues().stream()
+                        .filter(iriString -> iriString != null && !iriString.isEmpty())
+                        .map(IRI::create)
+                        .collect(Collectors.toList());
+
+                if (!scaleValueIris.isEmpty()) {
+                    // Grupăm scale values pe top class (axă)
+                    hierarchyRootsToEntities.computeIfAbsent(topClassIRI, k -> new ArrayList<>())
+                            .addAll(scaleValueIris);
+                }
+            }
+
+            // Dacă nu avem scale values, nu mai continuăm
+            if (hierarchyRootsToEntities.isEmpty()) {
+                return errorMessages;
+            }
+
+            // Trimitem request-ul către backend pentru validare
+            ValidateAxisBelongsToHierarchyResult result = validateAxisBelongsToHierarchyExecutor.execute(
+                    new ValidateAxisBelongsToHierarchyAction(request.projectId(), hierarchyRootsToEntities),
+                    executionContext
+            ).get(15, TimeUnit.SECONDS);
+
+            // Procesăm răspunsul și adăugăm erori pentru entitățile invalide
+            for (Map.Entry<IRI, List<IRI>> entry : result.invalidEntitiesByRoot().entrySet()) {
+                IRI topClassIRI = entry.getKey();
+                List<IRI> invalidEntities = entry.getValue();
+
+                // Găsim axa corespunzătoare acestui top class
+                String axis = axisToGenericScales.stream()
+                        .filter(scale -> scale.getGenericPostcoordinationScaleTopClass().equals(topClassIRI.toString()))
+                        .map(PostcoordinationAxisToGenericScale::getPostcoordinationAxis)
+                        .findFirst()
+                        .orElse("Unknown");
+
+                for (IRI invalidEntity : invalidEntities) {
+                    errorMessages.add("Scale value IRI '" + invalidEntity + "' does not belong to axis '" + axis + "' hierarchy (top class: " + topClassIRI + ")");
+                }
+            }
+
+        } catch (TimeoutException | InterruptedException | ExecutionException e) {
+            LOGGER.error("Error validating scale values belong to axis hierarchy", e);
+            errorMessages.add("Error validating scale values belong to axis hierarchy: " + e.getMessage());
         }
 
         return errorMessages;
