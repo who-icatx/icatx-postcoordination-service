@@ -118,11 +118,17 @@ public class ProjectChangesManager {
                 totalChanges
         );
         var message = commitMessage != null ? commitMessage : "";
+        StringBuilder sb = new StringBuilder();
+        sb.append("<div style=\"cursor : pointer;\" onclick=\"window.focusClickedEntity && window.focusClickedEntity(event, '")
+                .append(whofiEntityIri)
+                .append("')\">");
+        sb.append("Edited Postcoordination Scale Values for Entity: ").append(subjectName).append(" : ").append(message);
+        sb.append("</div>");
         return ProjectChange.get(
                 RevisionNumber.valueOf("0"),
                 revision.userId(),
                 revision.timestamp(),
-                "Edited Postcoordination Scale Values for Entity: " + subjectName + " : " + message,
+                sb.toString(),
                 totalChanges,
                 page);
     }
@@ -292,11 +298,19 @@ public class ProjectChangesManager {
                 totalChanges
         );
         var message = commitMessage != null ? commitMessage : "";
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("<div style=\"cursor : pointer;\" onclick=\"window.focusClickedEntity && window.focusClickedEntity(event, '")
+                .append(specRevisionWithEntity.whoficEntityIri())
+                .append("')\">");
+        sb.append("Edited Postcoordination Specification for Entity: ").append(subjectName).append(" : ").append(message);
+        sb.append("</div>");
+
         return ProjectChange.get(
                 RevisionNumber.valueOf("0"),
                 revision.userId(),
                 revision.timestamp(),
-                "Edited Postcoordination Specification for Entity: " + subjectName + " : " + message,
+                sb.toString(),
                 totalChanges,
                 page);
     }
