@@ -189,7 +189,7 @@ public class ProjectChangesManager {
         Map<String, Integer> orderedAxisMap = new HashMap<>();
         try {
             GetIcatxEntityTypeResponse typeResponse = entityTypesExecutor.execute(new GetIcatxEntityTypeRequest(IRI.create(whoficEntityiri), projectId), new ExecutionContext(userId, "", CorrelationMDCUtil.getCorrelationId()))
-                    .get(5, TimeUnit.SECONDS);
+                    .get(15, TimeUnit.SECONDS);
             List<TableConfiguration> tableConfiguration = tableConfigurationRepo.getTableConfigurationByEntityType(typeResponse.icatxEntityTypes());
 
             if (tableConfiguration == null) {

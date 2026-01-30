@@ -1,7 +1,6 @@
 package edu.stanford.protege.webprotege.postcoordinationservice.repositories;
 
 
-import com.mongodb.client.model.InsertOneModel;
 import com.mongodb.client.model.WriteModel;
 import com.mongodb.client.result.UpdateResult;
 import edu.stanford.protege.webprotege.common.ChangeRequestId;
@@ -204,6 +203,26 @@ public class PostCoordinationRepository {
                 }
         );
 
+    }
+
+    public void deleteHistoriesForEntityIris(ProjectId projectId, Collection<String> entityIris) {
+        if (entityIris == null || entityIris.isEmpty()) {
+            return;
+        }
+
+        Query query = new Query();
+        query.addCriteria(
+                Criteria.where(WHOFIC_ENTITY_IRI).in(entityIris)
+                        .and(PROJECT_ID).is(projectId.value())
+        );
+
+        readWriteLock.executeWriteLock(() -> {
+            var specDeleteResult = mongoTemplate.remove(query, EntityPostCoordinationHistory.class, POSTCOORDINATION_HISTORY_COLLECTION);
+            var customScalesDeleteResult = mongoTemplate.remove(query, EntityCustomScalesValuesHistory.class, POSTCOORDINATION_CUSTOM_SCALES_COLLECTION);
+
+            LOGGER.info("Deleted histories for projectId {} and entity iris count {}. Spec deleted: {}, Custom scales deleted: {}",
+                    projectId.value(), entityIris.size(), specDeleteResult.getDeletedCount(), customScalesDeleteResult.getDeletedCount());
+        });
     }
 
     public void deletePostCoordinationCustomScalesRevision(ChangeRequestId changeRequestId, ProjectId projectId, String entityIri) {

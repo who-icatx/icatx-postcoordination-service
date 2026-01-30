@@ -191,7 +191,7 @@ public class PostCoordinationService {
                                     List<String> entityTypes;
                                     try {
                                         entityTypes = entityTypeExecutor.execute(new GetIcatxEntityTypeRequest(IRI.create(newSpecification.whoficEntityIri()), projectId), new ExecutionContext(userId, "", CorrelationMDCUtil.getCorrelationId()))
-                                                .get(5, TimeUnit.SECONDS).icatxEntityTypes();
+                                                .get(15, TimeUnit.SECONDS).icatxEntityTypes();
                                     } catch (TimeoutException | InterruptedException | ExecutionException e) {
                                         throw new MessageProcessingException("Error fetching entity types", e);
                                     }
@@ -289,7 +289,7 @@ public class PostCoordinationService {
         List<String> entityTypes;
         try {
             entityTypes = entityTypeExecutor.execute(new GetIcatxEntityTypeRequest(IRI.create(newSpec.whoficEntityIri()), projectId), new ExecutionContext(userId, "", CorrelationMDCUtil.getCorrelationId()))
-                    .get(5, TimeUnit.SECONDS).icatxEntityTypes();
+                    .get(15, TimeUnit.SECONDS).icatxEntityTypes();
         } catch (TimeoutException | InterruptedException | ExecutionException e) {
             throw new MessageProcessingException("Error fetching entity types", e);
         }
@@ -311,7 +311,7 @@ public class PostCoordinationService {
 
         try {
             List<String> entityTypes = entityTypeExecutor.execute(new GetIcatxEntityTypeRequest(IRI.create(entityIri), projectId), executionContext)
-                    .get(5, TimeUnit.SECONDS).icatxEntityTypes();
+                    .get(15, TimeUnit.SECONDS).icatxEntityTypes();
             return this.repository.getExistingCustomScaleHistoryOrderedByRevision(entityIri, projectId)
                     .map(history -> {
                         Date lastRevisionDate = null;
