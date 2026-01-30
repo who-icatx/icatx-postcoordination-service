@@ -73,10 +73,10 @@ public class ValidateEntityUpdateCommandHandler implements CommandHandler<Valida
         List<String> errorMessages = new ArrayList<>();
 
         try {
-            // Obținem entityIri (aceeași valoare în ambele atribute)
+            // Get entityIri (same value in both attributes)
             String entityIri = request.entityCustomScaleValues().whoficEntityIri();
             
-            // Verificăm că entityIri este același în ambele atribute
+            // Verify that entityIri is the same in both attributes
             if (!entityIri.equals(request.entitySpecification().whoficEntityIri())) {
                 errorMessages.add("Entity IRI mismatch: entityCustomScaleValues.whoficEntityIri (" + 
                     entityIri + ") differs from entitySpecification.whoficEntityIri (" + 
@@ -84,7 +84,7 @@ public class ValidateEntityUpdateCommandHandler implements CommandHandler<Valida
                 return errorMessages;
             }
 
-            // Fetch entityType pentru entityIri
+            // Fetch entityType for entityIri
             List<String> entityTypes = entityTypeExecutor.execute(
                     new GetIcatxEntityTypeRequest(IRI.create(entityIri), request.projectId()), 
                     executionContext)
@@ -92,10 +92,10 @@ public class ValidateEntityUpdateCommandHandler implements CommandHandler<Valida
 
             LOGGER.info("Fetched entity types for {} : {}", entityIri, entityTypes);
 
-            // Obținem configurațiile de tabel pentru entityType-urile găsite
+            // Get table configurations for the found entityTypes
             List<TableConfiguration> configurations = configRepository.getTableConfigurationByEntityType(entityTypes);
 
-            // Extragem toate axele permise pentru acest entityType (inclusiv sub-axele din axe compozite)
+            // Extract all allowed axes for this entityType (including sub-axes from composite axes)
             Set<String> allowedAxes = configurations.stream()
                     .filter(config -> entityTypes.contains(config.getEntityType()))
                     .flatMap(config -> {
@@ -108,7 +108,7 @@ public class ValidateEntityUpdateCommandHandler implements CommandHandler<Valida
                     })
                     .collect(Collectors.toSet());
 
-            // Validăm axele din entitySpecification
+            // Validate axes from entitySpecification
             for (PostCoordinationSpecification spec : request.entitySpecification().postcoordinationSpecifications()) {
                 validateAxes(spec.getAllowedAxes(), "allowedAxes", allowedAxes, errorMessages);
                 validateAxes(spec.getDefaultAxes(), "defaultAxes", allowedAxes, errorMessages);
@@ -116,7 +116,7 @@ public class ValidateEntityUpdateCommandHandler implements CommandHandler<Valida
                 validateAxes(spec.getRequiredAxes(), "requiredAxes", allowedAxes, errorMessages);
             }
 
-            // Validăm axele din entityCustomScaleValues
+            // Validate axes from entityCustomScaleValues
             for (PostCoordinationScaleCustomization customization : request.entityCustomScaleValues().scaleCustomizations()) {
                 String axis = customization.getPostcoordinationAxis();
                 if (axis != null && !allowedAxes.contains(axis)) {
@@ -146,7 +146,7 @@ public class ValidateEntityUpdateCommandHandler implements CommandHandler<Valida
         List<String> errorMessages = new ArrayList<>();
 
         try {
-            // Extragem toate IRI-urile din postcoordinationScaleValues
+            // Extract all IRIs from postcoordinationScaleValues
             Set<IRI> scaleValueIris = request.entityCustomScaleValues().scaleCustomizations().stream()
                     .flatMap(customization -> customization.getPostcoordinationScaleValues().stream())
                     .filter(iriString -> iriString != null && !iriString.isEmpty())
@@ -157,7 +157,7 @@ public class ValidateEntityUpdateCommandHandler implements CommandHandler<Valida
                 return errorMessages;
             }
 
-            // Verificăm care IRI-uri nu există în proiect
+            // Check which IRIs do not exist in the project
             CheckNonExistentIrisResult result = checkNonExistentIrisExecutor.execute(
                     new CheckNonExistentIrisAction(request.projectId(), scaleValueIris),
                     executionContext
@@ -180,7 +180,7 @@ public class ValidateEntityUpdateCommandHandler implements CommandHandler<Valida
     private List<String> validateCustomScalesAgainstSpecifications(ValidateEntityUpdateRequest request) {
         List<String> errorMessages = new ArrayList<>();
 
-        // Construim un set cu toate axele permise din specifications (allowedAxes și requiredAxes)
+        // Build a set with all allowed axes from specifications (allowedAxes and requiredAxes)
         Set<String> allowedOrRequiredAxes = request.entitySpecification().postcoordinationSpecifications().stream()
                 .flatMap(spec -> {
                     Set<String> axes = new HashSet<>();
@@ -194,7 +194,7 @@ public class ValidateEntityUpdateCommandHandler implements CommandHandler<Valida
                 })
                 .collect(Collectors.toSet());
 
-        // Pentru fiecare custom scale, verificăm dacă axa sa este în allowedAxes sau requiredAxes
+        // For each custom scale, check if its axis is in allowedAxes or requiredAxes
         for (PostCoordinationScaleCustomization customization : request.entityCustomScaleValues().scaleCustomizations()) {
             String axis = customization.getPostcoordinationAxis();
             if (axis != null && !allowedOrRequiredAxes.contains(axis)) {
@@ -209,7 +209,7 @@ public class ValidateEntityUpdateCommandHandler implements CommandHandler<Valida
         List<String> errorMessages = new ArrayList<>();
 
         try {
-            // Obținem maparea axă -> top class din configurație
+            // Get the axis -> top class mapping from configuration
             List<PostcoordinationAxisToGenericScale> axisToGenericScales = axisToGenericScaleRepository.getPostCoordAxisToGenericScale();
             Map<String, String> axisToTopClassMap = axisToGenericScales.stream()
                     .collect(Collectors.toMap(
@@ -217,8 +217,8 @@ public class ValidateEntityUpdateCommandHandler implements CommandHandler<Valida
                             PostcoordinationAxisToGenericScale::getGenericPostcoordinationScaleTopClass
                     ));
 
-            // Construim map-ul hierarchyRootsToEntities
-            // Key = top class IRI pentru axă, Value = lista de scale values pentru acea axă
+            // Build the hierarchyRootsToEntities map
+            // Key = top class IRI for axis, Value = list of scale values for that axis
             Map<IRI, List<IRI>> hierarchyRootsToEntities = new HashMap<>();
 
             for (PostCoordinationScaleCustomization customization : request.entityCustomScaleValues().scaleCustomizations()) {
@@ -235,36 +235,36 @@ public class ValidateEntityUpdateCommandHandler implements CommandHandler<Valida
 
                 IRI topClassIRI = IRI.create(topClassIri);
                 
-                // Convertim scale values din String în IRI
+                // Convert scale values from String to IRI
                 List<IRI> scaleValueIris = customization.getPostcoordinationScaleValues().stream()
                         .filter(iriString -> iriString != null && !iriString.isEmpty())
                         .map(IRI::create)
                         .collect(Collectors.toList());
 
                 if (!scaleValueIris.isEmpty()) {
-                    // Grupăm scale values pe top class (axă)
+                    // Group scale values by top class (axis)
                     hierarchyRootsToEntities.computeIfAbsent(topClassIRI, k -> new ArrayList<>())
                             .addAll(scaleValueIris);
                 }
             }
 
-            // Dacă nu avem scale values, nu mai continuăm
+            // If we don't have scale values, don't continue
             if (hierarchyRootsToEntities.isEmpty()) {
                 return errorMessages;
             }
 
-            // Trimitem request-ul către backend pentru validare
+            // Send the request to the backend for validation
             ValidateAxisBelongsToHierarchyResult result = validateAxisBelongsToHierarchyExecutor.execute(
                     new ValidateAxisBelongsToHierarchyAction(request.projectId(), hierarchyRootsToEntities),
                     executionContext
             ).get(15, TimeUnit.SECONDS);
 
-            // Procesăm răspunsul și adăugăm erori pentru entitățile invalide
+            // Process the response and add errors for invalid entities
             for (Map.Entry<IRI, List<IRI>> entry : result.invalidEntitiesByRoot().entrySet()) {
                 IRI topClassIRI = entry.getKey();
                 List<IRI> invalidEntities = entry.getValue();
 
-                // Găsim axa corespunzătoare acestui top class
+                // Find the axis corresponding to this top class
                 String axis = axisToGenericScales.stream()
                         .filter(scale -> scale.getGenericPostcoordinationScaleTopClass().equals(topClassIRI.toString()))
                         .map(PostcoordinationAxisToGenericScale::getPostcoordinationAxis)
