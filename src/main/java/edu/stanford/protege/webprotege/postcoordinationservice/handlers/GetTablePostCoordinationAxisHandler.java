@@ -48,7 +48,7 @@ public class GetTablePostCoordinationAxisHandler implements CommandHandler<GetTa
     public Mono<GetTablePostCoordinationAxisResponse> handleRequest(GetTablePostCoordinationAxisRequest request, ExecutionContext executionContext) {
         try {
             GetIcatxEntityTypeResponse response = entityTypesExecutor.execute(new GetIcatxEntityTypeRequest(request.entityIri(), request.projectId()), executionContext)
-                    .get(5, TimeUnit.SECONDS);
+                    .get(15, TimeUnit.SECONDS);
             List<TableConfiguration> tableConfigurations = tableConfigRepository.getTableConfigurationByEntityType(response.icatxEntityTypes());
             List<TableAxisLabel> labels = tableConfigRepository.getTableAxisLabels();
 
