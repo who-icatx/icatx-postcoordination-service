@@ -121,7 +121,9 @@ public class ProjectChangesManager {
         StringBuilder sb = new StringBuilder();
         sb.append("<div style=\"cursor : pointer;\" onclick=\"window.focusClickedEntity && window.focusClickedEntity(event, '")
                 .append(whofiEntityIri)
-                .append("')\">");
+                .append("')\" title=\"Click to select entity ")
+                .append(whofiEntityIri)
+                .append("\">");
         sb.append("Edited Postcoordination Scale Values for Entity: ").append(subjectName).append(" : ").append(message);
         sb.append("</div>");
         return ProjectChange.get(
@@ -302,8 +304,10 @@ public class ProjectChangesManager {
         StringBuilder sb = new StringBuilder();
         sb.append("<div style=\"cursor : pointer;\" onclick=\"window.focusClickedEntity && window.focusClickedEntity(event, '")
                 .append(specRevisionWithEntity.whoficEntityIri())
-                .append("')\">");
-        sb.append("Edited Postcoordination Specification for Entity: ").append(subjectName).append(" : ").append(message);
+                .append("')\" title=\"Click to select entity ")
+                .append(specRevisionWithEntity.whoficEntityIri())
+                .append("\">");
+        sb.append("Edited Postcoordination Specification for Entity: ").append(subjectName).append(": ").append(message);
         sb.append("</div>");
 
         return ProjectChange.get(
